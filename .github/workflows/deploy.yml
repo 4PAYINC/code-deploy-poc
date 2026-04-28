@@ -15,7 +15,7 @@ jobs:
     runs-on: [self-hosted, linux]
     env:
       SOURCE_PATH: ./test-deploy.txt
-      REMOTE_PATH: /var/www/tmp/github-poc
+      REMOTE_PATH: /var/www/tmp/github-poc/
       REMOTE_USER: phpadm
     steps:
       - name: Checkout repository
@@ -26,11 +26,9 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      - name: Copy files to AWS server via SFTP
+      - name: Copy files to AWS server via SSH/SCP
         run: |
-          sftp -o StrictHostKeyChecking=no -oBatchMode=yes $REMOTE_USER@${{ secrets.AWS_SERVER_HOST }} <<EOF
-            put -r $SOURCE_PATH $REMOTE_PATH
-          EOF
+          scp -o StrictHostKeyChecking=no -r $SOURCE_PATH $REMOTE_USER@${{ secrets.AWS_SERVER_HOST }}:$REMOTE_PATH
 
       - name: Run deployment commands on AWS server
         run: |
