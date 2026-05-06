@@ -10,8 +10,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  deploy:
-    name: Deploy on main push
+  deploy-dev:
+    name: Deploy to dev
     runs-on: [self-hosted, linux]
     env:
       SOURCE_PATH: ./test-deploy.txt
@@ -26,13 +26,48 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      - name: Copy files to AWS server via SSH/SCP
+      - name: Copy files to dev server via SSH/SCP
         run: |
           scp -o StrictHostKeyChecking=no -r $SOURCE_PATH $REMOTE_USER@${{ secrets.AWS_SERVER_HOST }}:$REMOTE_PATH
 
-      - name: Run deployment commands on AWS server
+      - name: Run deployment commands on dev server
         run: |
           ssh -o StrictHostKeyChecking=no $REMOTE_USER@${{ secrets.AWS_SERVER_HOST }} <<'EOF'
+            cd $REMOTE_PATH
+            # Add any post-copy commands below
+            # e.g. sudo systemctl restart myapp
+          EOF
+
+  deploy-qa:
+    name: Deploy to QA
+    runs-on: [self-hosted, linux]
+    environment: qa
+    needs: deploy-dev
+    env:
+      SOURCE_PATH: ./test-deploy.txt
+      REMOTE_PATH: /var/www/tmp/github-poc-qa/
+      REMOTE_USER: ec2-user
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Start SSH agent
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Ensure QA deploy directory exists
+        run: |
+          ssh -o StrictHostKeyChecking=no $REMOTE_USER@${{ secrets.QA_SERVER_HOST }} \
+            "sudo mkdir -p $REMOTE_PATH && sudo chown -R $REMOTE_USER:$REMOTE_USER $REMOTE_PATH"
+
+      - name: Copy files to QA server via SSH/SCP
+        run: |
+          scp -o StrictHostKeyChecking=no -r $SOURCE_PATH $REMOTE_USER@${{ secrets.QA_SERVER_HOST }}:$REMOTE_PATH
+
+      - name: Run deployment commands on QA server
+        run: |
+          ssh -o StrictHostKeyChecking=no $REMOTE_USER@${{ secrets.QA_SERVER_HOST }} <<'EOF'
             cd $REMOTE_PATH
             # Add any post-copy commands below
             # e.g. sudo systemctl restart myapp
