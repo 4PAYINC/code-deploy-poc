@@ -16,7 +16,7 @@ jobs:
     env:
       SOURCE_PATH: ./test-deploy.txt
       REMOTE_PATH: /var/www/tmp/github-poc/
-      REMOTE_USER: phpadm
+      REMOTE_USER: ec2-user
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
